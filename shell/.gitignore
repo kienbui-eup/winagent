@@ -1,0 +1,8 @@
+# .NET build output
+bin/
+obj/
+*.user
+
+# Velopack / publish output (Phase G)
+publish/
+Releases/
