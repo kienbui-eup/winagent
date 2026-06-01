@@ -41,9 +41,9 @@ test('public README documents npm package and registered MCP tool names', async 
   const readme = await fs.readFile(path.join(root, 'README.md'), 'utf8');
 
   assert.match(readme, /npx @kienbui-eup\/trolywin/);
-  assert.match(readme, /agentify_tabs/);
-  assert.match(readme, /agentify_tab_create/);
-  assert.match(readme, /agentify_tab_close/);
-  assert.doesNotMatch(readme, /agentify_create_tab/);
+  assert.match(readme, /trolywin_tabs/);
+  assert.match(readme, /trolywin_tab_create/);
+  assert.match(readme, /trolywin_tab_close/);
+  assert.doesNotMatch(readme, /trolywin_create_tab/);
   assert.doesNotMatch(readme, /agentify-sh/);
 });

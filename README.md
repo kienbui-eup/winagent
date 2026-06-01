@@ -147,18 +147,20 @@ The core loop is:
 
 ## Useful MCP Tools
 
-The MCP server registers `agentify_*` tools, including:
+The MCP server registers `trolywin_*` tools, including:
 
-- `agentify_query`: send a prompt to a stable tab and return the assistant response.
-- `agentify_read_page`: read visible page text from a tab.
-- `agentify_navigate`: navigate a tab to a URL.
-- `agentify_ensure_ready`: wait for login, CAPTCHA, or UI readiness.
-- `agentify_show` / `agentify_hide`: bring windows forward or minimize them.
-- `agentify_status`: inspect tab and readiness state.
-- `agentify_tabs`, `agentify_tab_create`, `agentify_tab_close`: manage tabs.
-- `agentify_save_artifacts`, `agentify_list_artifacts`, `agentify_open_artifacts_folder`: manage generated files/images.
-- `agentify_save_bundle`, `agentify_list_bundles`: save and reuse context bundles.
-- `agentify_add_watch_folder`, `agentify_list_watch_folders`, `agentify_remove_watch_folder`: manage watched folders.
+> Back-compat: the legacy `agentify_*` tool names are still registered as deprecated aliases, so existing MCP client configurations keep working. Prefer the `trolywin_*` names; the aliases may be removed in a future major version.
+
+- `trolywin_query`: send a prompt to a stable tab and return the assistant response.
+- `trolywin_read_page`: read visible page text from a tab.
+- `trolywin_navigate`: navigate a tab to a URL.
+- `trolywin_ensure_ready`: wait for login, CAPTCHA, or UI readiness.
+- `trolywin_show` / `trolywin_hide`: bring windows forward or minimize them.
+- `trolywin_status`: inspect tab and readiness state.
+- `trolywin_tabs`, `trolywin_tab_create`, `trolywin_tab_close`: manage tabs.
+- `trolywin_save_artifacts`, `trolywin_list_artifacts`, `trolywin_open_artifacts_folder`: manage generated files/images.
+- `trolywin_save_bundle`, `trolywin_list_bundles`: save and reuse context bundles.
+- `trolywin_add_watch_folder`, `trolywin_list_watch_folders`, `trolywin_remove_watch_folder`: manage watched folders.
 
 ## Artifact Workflow
 
@@ -166,7 +168,7 @@ Generate an image or file in a stable tab:
 
 ```json
 {
-  "tool": "agentify_query",
+  "tool": "trolywin_query",
   "arguments": {
     "key": "ui-concepts",
     "prompt": "Generate 3 clean UI concept images for a compact desktop developer tool. Keep backgrounds neutral and avoid text."
@@ -178,7 +180,7 @@ Save the generated images locally:
 
 ```json
 {
-  "tool": "agentify_save_artifacts",
+  "tool": "trolywin_save_artifacts",
   "arguments": {
     "key": "ui-concepts",
     "mode": "images",
@@ -191,7 +193,7 @@ Reattach one of the returned file paths in a follow-up:
 
 ```json
 {
-  "tool": "agentify_query",
+  "tool": "trolywin_query",
   "arguments": {
     "key": "ui-concepts",
     "prompt": "Use the attached concept image and create a more minimal variant with stronger contrast.",
@@ -206,7 +208,7 @@ Ask Agentify to pack local files or folders into a prompt:
 
 ```json
 {
-  "tool": "agentify_query",
+  "tool": "trolywin_query",
   "arguments": {
     "key": "repo-review",
     "prompt": "Summarize this codebase in 8 bullets and list the top 3 risky files to change first.",
@@ -219,7 +221,7 @@ Control context size:
 
 ```json
 {
-  "tool": "agentify_query",
+  "tool": "trolywin_query",
   "arguments": {
     "key": "repo-review",
     "prompt": "Focus only on rendering and state management.",

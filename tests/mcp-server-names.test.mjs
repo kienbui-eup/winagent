@@ -7,19 +7,32 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-test('mcp-server registers agentify_* tools only', async () => {
+test('mcp-server registers trolywin_* tools with agentify_* back-compat aliases', async () => {
   const src = await fs.readFile(path.join(__dirname, '..', 'mcp-server.mjs'), 'utf8');
 
-  assert.ok(src.includes("'agentify_query'"), 'expected agentify_query tool');
-  assert.ok(src.includes("'agentify_download_images'"), 'expected agentify_download_images tool');
-  assert.ok(src.includes("'agentify_list_watch_folders'"), 'expected agentify_list_watch_folders tool');
-  assert.ok(src.includes("'agentify_add_watch_folder'"), 'expected agentify_add_watch_folder tool');
-  assert.ok(src.includes("'agentify_remove_watch_folder'"), 'expected agentify_remove_watch_folder tool');
-  assert.ok(src.includes("'agentify_open_watch_folder'"), 'expected agentify_open_watch_folder tool');
-  assert.ok(src.includes("'agentify_save_bundle'"), 'expected agentify_save_bundle tool');
-  assert.ok(src.includes("'agentify_list_bundles'"), 'expected agentify_list_bundles tool');
-  assert.ok(src.includes("'agentify_save_artifacts'"), 'expected agentify_save_artifacts tool');
-  assert.ok(src.includes("'agentify_list_artifacts'"), 'expected agentify_list_artifacts tool');
+  // Primary tool names are trolywin_*.
+  assert.ok(src.includes("'trolywin_query'"), 'expected trolywin_query tool');
+  assert.ok(src.includes("'trolywin_download_images'"), 'expected trolywin_download_images tool');
+  assert.ok(src.includes("'trolywin_list_watch_folders'"), 'expected trolywin_list_watch_folders tool');
+  assert.ok(src.includes("'trolywin_add_watch_folder'"), 'expected trolywin_add_watch_folder tool');
+  assert.ok(src.includes("'trolywin_remove_watch_folder'"), 'expected trolywin_remove_watch_folder tool');
+  assert.ok(src.includes("'trolywin_open_watch_folder'"), 'expected trolywin_open_watch_folder tool');
+  assert.ok(src.includes("'trolywin_save_bundle'"), 'expected trolywin_save_bundle tool');
+  assert.ok(src.includes("'trolywin_list_bundles'"), 'expected trolywin_list_bundles tool');
+  assert.ok(src.includes("'trolywin_save_artifacts'"), 'expected trolywin_save_artifacts tool');
+  assert.ok(src.includes("'trolywin_list_artifacts'"), 'expected trolywin_list_artifacts tool');
+
+  // No literal agentify_* tool registrations remain; legacy names come from the alias mechanism.
+  assert.ok(!src.includes("'agentify_query'"), 'no literal agentify_query registration should remain');
+  assert.ok(!src.includes("'agentify_tabs'"), 'no literal agentify_tabs registration should remain');
+  assert.ok(!src.includes("'agentify_save_artifacts'"), 'no literal agentify_save_artifacts registration should remain');
+
+  // The registerTool helper registers a legacy agentify_* alias for each trolywin_* tool.
+  assert.ok(src.includes("LEGACY_ALIAS_PREFIX = 'agentify_'"), 'expected legacy alias prefix');
+  assert.ok(src.includes("PRIMARY_TOOL_PREFIX = 'trolywin_'"), 'expected primary tool prefix');
+  assert.ok(src.includes('server.registerTool(legacyName, legacyDef, handler)'), 'expected alias registration');
+
+  // Request-shape contracts are unchanged by the rebrand.
   assert.ok(src.includes('model,'), 'expected model hint to be forwarded to HTTP query');
   assert.ok(src.includes("body: { model, key, name, show: typeof show === 'boolean' ? show : undefined }"), 'expected model hint on tab_create');
   assert.ok(src.includes("body: { model, tabId, key, maxChars: maxChars || 200_000 }"), 'expected model hint on read_page');
@@ -39,5 +52,4 @@ test('mcp-server registers agentify_* tools only', async () => {
   assert.ok(!src.includes('void model;'), 'model hint should not be dropped');
 
   assert.ok(!src.includes('browser_'), 'should not contain browser_* tools/aliases');
-  assert.ok(!src.includes('registerToolWithAliases'), 'should not contain alias helper');
 });

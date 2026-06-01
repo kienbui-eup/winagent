@@ -92,6 +92,12 @@ async function main() {
     const stateDir = argValue('--state-dir') || defaultStateDir();
     const basePort = Number(argValue('--port') || process.env.AGENTIFY_DESKTOP_PORT || 0);
     const startMinimized = argFlag('--start-minimized');
+    // Headless mode: boot the runtime (HTTP API, browser backend, MCP) without
+    // showing the Electron control-center window. The native WinUI shell drives
+    // the runtime over the loopback HTTP API in this mode (see ADR-0002).
+    const headless =
+      argFlag('--headless') ||
+      ['1', 'true', 'yes', 'on'].includes(String(process.env.TROLY_HEADLESS || '').trim().toLowerCase());
 
   // Reduce obvious automation fingerprints (best-effort).
   try {
@@ -160,6 +166,8 @@ async function main() {
   const orchestrators = new Map(); // key -> { child, pid, startedAt }
   const orchestratorHistory = new Map(); // key -> { pid, startedAt, exitedAt, exitCode, signal, logPath }
   const showControlCenter = async () => {
+    // In headless mode the WinUI shell owns the UI; never create the Electron window.
+    if (headless) return;
     if (controlWin && !controlWin.isDestroyed()) {
       if (controlWin.isMinimized()) controlWin.restore();
       controlWin.show();
@@ -703,6 +711,10 @@ async function main() {
   registerShutdownSignals({ requestQuit: shutdown.requestQuit });
 
   app.on('window-all-closed', () => {
+    // In headless mode there are no Electron windows by design; the WinUI shell
+    // owns the runtime lifecycle (via POST /shutdown, signals, or the Job Object).
+    // Quitting here would tear down the runtime as soon as it boots.
+    if (headless) return;
     app.quit();
   });
 

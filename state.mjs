@@ -26,6 +26,10 @@ export function settingsPath(stateDir = defaultStateDir()) {
   return path.join(stateDir, 'settings.json');
 }
 
+export function clientIdPath(stateDir = defaultStateDir()) {
+  return path.join(stateDir, 'client-id.txt');
+}
+
 export function defaultSettings() {
   return {
     browserBackend: 'chrome-cdp',
@@ -110,6 +114,27 @@ export async function ensureToken(stateDir = defaultStateDir()) {
   const token = crypto.randomBytes(24).toString('hex');
   await writeToken(token, stateDir);
   return token;
+}
+
+// Stable per-install client identity, sent to the Troly backend as X-Client-Id.
+// Mirrors ensureToken: generated once, then persisted and reused across runs.
+export async function readClientId(stateDir = defaultStateDir()) {
+  const fromEnv = (process.env.TROLY_CLIENT_ID || '').trim();
+  if (fromEnv) return fromEnv;
+  try {
+    return (await fs.readFile(clientIdPath(stateDir), 'utf8')).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureClientId(stateDir = defaultStateDir()) {
+  const existing = await readClientId(stateDir);
+  if (existing) return existing;
+  const clientId = crypto.randomUUID();
+  await ensureStateDir(stateDir);
+  await atomicWriteFile(clientIdPath(stateDir), `${clientId}\n`, { mode: 0o600 });
+  return clientId;
 }
 
 export async function readState(stateDir = defaultStateDir()) {

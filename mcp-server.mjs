@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { defaultStateDir } from './state.mjs';
 import { ensureDesktopRunning, requestJson } from './mcp-lib.mjs';
 
-const server = new McpServer({ name: 'agentify-desktop', version: '0.1.0' });
+const server = new McpServer({ name: 'trolywin', version: '0.1.0' });
 const stateDir = defaultStateDir();
 const showTabs = process.argv.includes('--show-tabs');
 
@@ -19,8 +19,23 @@ function resolveLocalPaths(items) {
     .map((item) => (path.isAbsolute(item) ? item : path.resolve(process.cwd(), item)));
 }
 
+// Tools are registered under their primary trolywin_* name. For backward
+// compatibility we also register the legacy agentify_* name as an alias so MCP
+// clients already configured against agentify_* keep working. The aliases are
+// deprecated and may be removed in a future major version.
+const LEGACY_ALIAS_PREFIX = 'agentify_';
+const PRIMARY_TOOL_PREFIX = 'trolywin_';
+
 function registerTool(name, def, handler) {
   server.registerTool(name, def, handler);
+  if (name.startsWith(PRIMARY_TOOL_PREFIX)) {
+    const legacyName = LEGACY_ALIAS_PREFIX + name.slice(PRIMARY_TOOL_PREFIX.length);
+    const legacyDef = {
+      ...def,
+      description: `[Deprecated alias for ${name}] ${def.description || ''}`.trim()
+    };
+    server.registerTool(legacyName, legacyDef, handler);
+  }
 }
 
 async function getConn() {
@@ -28,7 +43,7 @@ async function getConn() {
 }
 
 registerTool(
-  'agentify_query',
+  'trolywin_query',
   {
     description:
       'Send a prompt to a local Agentify Desktop browser session and return the latest assistant response. If a CAPTCHA/login challenge appears, the browser window will ask for user intervention and resume automatically.',
@@ -112,7 +127,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_read_page',
+  'trolywin_read_page',
   {
     description: 'Read text content from the active tab in the local Agentify Desktop window.',
     inputSchema: {
@@ -135,7 +150,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_navigate',
+  'trolywin_navigate',
   {
     description: 'Navigate the Agentify Desktop browser window to a URL (local UI automation).',
     inputSchema: {
@@ -153,7 +168,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_ensure_ready',
+  'trolywin_ensure_ready',
   {
     description:
       'Wait until the selected AI web UI is ready for input (e.g., after login/CAPTCHA). Triggers local user handoff if needed and resumes when the prompt textarea is visible.',
@@ -177,7 +192,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_show',
+  'trolywin_show',
   { description: 'Bring the Agentify Desktop window to the front.', inputSchema: { model: z.string().optional(), tabId: z.string().optional(), key: z.string().optional() } },
   async ({ model, tabId, key }) => {
     const conn = await getConn();
@@ -187,7 +202,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_hide',
+  'trolywin_hide',
   { description: 'Minimize the Agentify Desktop window.', inputSchema: { model: z.string().optional(), tabId: z.string().optional(), key: z.string().optional() } },
   async ({ model, tabId, key }) => {
     const conn = await getConn();
@@ -197,7 +212,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_status',
+  'trolywin_status',
   {
     description: 'Get current URL and blocked/ready status for the Agentify Desktop window.',
     inputSchema: {
@@ -221,7 +236,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_stop_query',
+  'trolywin_stop_query',
   {
     description: 'Break-glass stop for a running query/send on a tab. Best-effort: requests cancellation and clicks the provider stop button if visible.',
     inputSchema: {
@@ -244,7 +259,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_image_gen',
+  'trolywin_image_gen',
   {
     description:
       'Generate images via the selected AI web UI (best-effort): sends the prompt, then downloads images from the page to a local folder and returns file paths.',
@@ -280,10 +295,10 @@ registerTool(
 );
 
 registerTool(
-  'agentify_download_images',
+  'trolywin_download_images',
   {
     description:
-      'Download images from the latest assistant message (best-effort). Useful if you generated images manually in the UI or via agentify_query.',
+      'Download images from the latest assistant message (best-effort). Useful if you generated images manually in the UI or via trolywin_query.',
     inputSchema: {
       model: z.string().optional().describe('Target model/provider hint (e.g., "chatgpt").'),
       tabId: z.string().optional().describe('Tab/session id to use.'),
@@ -308,7 +323,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_list_watch_folders',
+  'trolywin_list_watch_folders',
   {
     description: 'List local watch/ingest folders that Agentify indexes into artifacts automatically.',
     inputSchema: {}
@@ -324,7 +339,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_add_watch_folder',
+  'trolywin_add_watch_folder',
   {
     description: 'Add a local folder to Agentify watch/ingest folders.',
     inputSchema: {
@@ -351,7 +366,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_remove_watch_folder',
+  'trolywin_remove_watch_folder',
   {
     description: 'Remove a configured watch/ingest folder by name.',
     inputSchema: {
@@ -374,7 +389,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_open_watch_folder',
+  'trolywin_open_watch_folder',
   {
     description: 'Open the local watch/ingest folder in Finder/Explorer so you can drop files there for automatic indexing.',
     inputSchema: {
@@ -397,7 +412,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_scan_watch_folder',
+  'trolywin_scan_watch_folder',
   {
     description: 'Force an immediate scan of the watch/ingest folder and index any newly dropped files as artifacts.',
     inputSchema: {}
@@ -413,7 +428,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_save_bundle',
+  'trolywin_save_bundle',
   {
     description:
       'Save a named reusable bundle of prompt prefix, attachments, and context paths. Useful for recurring project workflows.',
@@ -442,7 +457,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_list_bundles',
+  'trolywin_list_bundles',
   {
     description: 'List saved context bundles.',
     inputSchema: {}
@@ -458,7 +473,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_get_bundle',
+  'trolywin_get_bundle',
   {
     description: 'Fetch a saved context bundle by name.',
     inputSchema: {
@@ -476,7 +491,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_delete_bundle',
+  'trolywin_delete_bundle',
   {
     description: 'Delete a saved context bundle by name.',
     inputSchema: {
@@ -494,7 +509,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_save_artifacts',
+  'trolywin_save_artifacts',
   {
     description:
       'Save the latest assistant-generated images/files from a tab to the local artifacts folder. Returns local paths you can reuse as attachments in the next prompt.',
@@ -523,7 +538,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_list_artifacts',
+  'trolywin_list_artifacts',
   {
     description: 'List locally saved artifacts for a tab/session so you can reuse their paths in later prompts.',
     inputSchema: {
@@ -549,7 +564,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_open_artifacts_folder',
+  'trolywin_open_artifacts_folder',
   {
     description: 'Open the local artifacts folder in Finder/Explorer for the whole app or for a specific tab/session.',
     inputSchema: {
@@ -574,7 +589,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_tabs',
+  'trolywin_tabs',
   { description: 'List current tabs/sessions (for parallel jobs).', inputSchema: {} },
   async () => {
     const conn = await getConn();
@@ -584,7 +599,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_tab_create',
+  'trolywin_tab_create',
   {
     description: 'Create (or ensure) a tab/session for a given key.',
     inputSchema: {
@@ -607,7 +622,7 @@ registerTool(
 );
 
 registerTool(
-  'agentify_tab_close',
+  'trolywin_tab_close',
   { description: 'Close a tab/session by tabId.', inputSchema: { tabId: z.string().describe('Tab id to close.') } },
   async ({ tabId }) => {
     const conn = await getConn();
@@ -616,14 +631,14 @@ registerTool(
   }
 );
 
-registerTool('agentify_shutdown', { description: 'Gracefully shut down the Agentify Desktop app.', inputSchema: {} }, async () => {
+registerTool('trolywin_shutdown', { description: 'Gracefully shut down the Agentify Desktop app.', inputSchema: {} }, async () => {
   const conn = await getConn();
   await requestJson({ ...conn, method: 'POST', path: '/shutdown', body: { scope: 'app' } });
   return { content: [{ type: 'text', text: 'ok' }] };
 });
 
 registerTool(
-  'agentify_rotate_token',
+  'trolywin_rotate_token',
   { description: 'Rotate the local HTTP API bearer token (requires reconnect on subsequent calls).', inputSchema: {} },
   async () => {
     const conn = await getConn();

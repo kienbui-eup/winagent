@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
-import { ensureToken, readToken, writeToken, defaultSettings, normalizeSettings, readSettings, writeSettings } from '../state.mjs';
+import { ensureToken, readToken, writeToken, ensureClientId, readClientId, defaultSettings, normalizeSettings, readSettings, writeSettings } from '../state.mjs';
 
 async function tempDir() {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'agentify-desktop-test-'));
@@ -26,6 +26,34 @@ test('state: writeToken overrides existing', async () => {
   assert.equal(await readToken(dir), 'abc123');
   await writeToken('def456', dir);
   assert.equal(await readToken(dir), 'def456');
+});
+
+test('state: ensureClientId generates a stable per-install id', async () => {
+  const prevEnv = process.env.TROLY_CLIENT_ID;
+  delete process.env.TROLY_CLIENT_ID;
+  try {
+    const dir = await tempDir();
+    const id = await ensureClientId(dir);
+    assert.equal(typeof id, 'string');
+    assert.ok(id.length >= 16);
+    assert.equal(await ensureClientId(dir), id);
+    assert.equal(await readClientId(dir), id);
+  } finally {
+    if (prevEnv === undefined) delete process.env.TROLY_CLIENT_ID;
+    else process.env.TROLY_CLIENT_ID = prevEnv;
+  }
+});
+
+test('state: readClientId prefers TROLY_CLIENT_ID env override', async () => {
+  const prevEnv = process.env.TROLY_CLIENT_ID;
+  process.env.TROLY_CLIENT_ID = 'env-client-id';
+  try {
+    const dir = await tempDir();
+    assert.equal(await readClientId(dir), 'env-client-id');
+  } finally {
+    if (prevEnv === undefined) delete process.env.TROLY_CLIENT_ID;
+    else process.env.TROLY_CLIENT_ID = prevEnv;
+  }
 });
 
 test('state: normalizeSettings defaults allowAuthPopups to true', () => {
