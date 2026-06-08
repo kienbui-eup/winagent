@@ -17,13 +17,14 @@ import {
 import { ChatGPTController } from './chatgpt-controller.mjs';
 import { startHttpApi } from './http-api.mjs';
 import { TabManager } from './tab-manager.mjs';
-import { defaultStateDir, ensureToken, readSettings, writeSettings, defaultSettings, writeState } from './state.mjs';
+import { defaultStateDir, ensureToken, ensureClientId, readSettings, writeSettings, defaultSettings, writeState } from './state.mjs';
 import { createWatchFolderManager } from './watch-folder.mjs';
 import { getWorkspace, setWorkspace } from './orchestrator/storage.mjs';
 import { logPath as orchestratorLogPath } from './orchestrator/logging.mjs';
 import { shouldAllowPopup } from './popup-policy.mjs';
 import { cleanupRuntimeResources, createGracefulShutdown, registerShutdownSignals } from './shutdown.mjs';
 import { readTrolyConfig, trolyEndpoints, validateTrolyConfig } from './troly-config.mjs';
+import { createTrolySession } from './troly-session.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,6 +140,11 @@ async function main() {
     throw new Error(`Troly config invalid: ${trolyValidation.errors.join('; ')}`);
   }
   const trolyUrls = trolyEndpoints(trolyConfig);
+  // Per-install client identity + app version sent to the Troly backend as
+  // X-Client-Id / X-App-Version. The runtime caches the app token in-memory only.
+  trolyConfig.clientId = await ensureClientId(stateDir);
+  trolyConfig.appVersion = (typeof app.getVersion === 'function' ? app.getVersion() : '') || trolyConfig.appVersion || '';
+  const trolySession = createTrolySession();
   let settings = await readSettings(stateDir);
   const browserBackendKind = resolveBrowserBackend({ settings });
   const chromeExecutablePath = resolveChromeExecutablePath({ settings });
@@ -656,7 +662,8 @@ async function main() {
             indicators: challenge?.indicators || null,
             tabs: tabs.listTabs()
           };
-        }
+        },
+        troly: { config: trolyConfig, urls: trolyUrls, session: trolySession, fetchImpl: fetch }
       });
       try {
         port = server.address().port;

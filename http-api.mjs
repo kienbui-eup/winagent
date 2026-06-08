@@ -8,6 +8,7 @@ import { ensureArtifactsDir, listArtifacts, registerArtifact, artifactsRoot } fr
 import { deleteBundle, getBundle, listBundles, saveBundle } from './bundle-store.mjs';
 import { assertWithin } from './orchestrator/security.mjs';
 import { prepareQueryContext } from './context-packer.mjs';
+import { trolyLogin, trolyExchangeWebToken, trolyRefreshAppToken, trolyFetchKeys, decodeKeys, decodeJwt } from './troly-client.mjs';
 
 function isLoopback(remoteAddress) {
   const a = String(remoteAddress || '');
@@ -84,6 +85,11 @@ function mapErrorToHttp(error) {
   if (msg === 'timeout_waiting_for_response') return { code: 408, body: { error: 'timeout_waiting_for_response', data: error?.data || null } };
   if (msg === 'artifacts_folder_open_failed') return { code: 500, body: { error: 'artifacts_folder_open_failed', data: error?.data || null } };
   if (msg === 'artifact_save_failed') return { code: 500, body: { error: 'artifact_save_failed', data: error?.data || null } };
+  if (msg === 'troly_not_configured') return { code: 400, body: { error: 'troly_not_configured', data: error?.data || null } };
+  if (msg === 'troly_invalid_request') return { code: 400, body: { error: 'troly_invalid_request', data: error?.data || null } };
+  if (msg === 'troly_no_session') return { code: 409, body: { error: 'troly_no_session', data: error?.data || null } };
+  if (msg === 'troly_unauthorized') return { code: 401, body: { error: 'troly_unauthorized', data: error?.data || null } };
+  if (msg === 'troly_upstream_error') return { code: 502, body: { error: 'troly_upstream_error', data: error?.data || null } };
   return null;
 }
 
@@ -441,7 +447,8 @@ export function startHttpApi({
   onScanWatchFolder,
   getStatus,
   getSettings,
-  onRuntimeChanged
+  onRuntimeChanged,
+  troly = null
 }) {
   const tokenRef = typeof token === 'string' ? { current: token } : token;
 
@@ -1144,6 +1151,113 @@ export function startHttpApi({
       if (url.pathname === '/watch-folders/scan' && req.method === 'POST') {
         const result = await onScanWatchFolder?.();
         return sendJson(res, 200, { ok: true, ...(result || {}) });
+      }
+
+      // Runtime + Troly auth/key surface for the native shell (see ADR-0002).
+      if (url.pathname === '/runtime/status' && req.method === 'GET') {
+        const trolyState = troly
+          ? { configured: !!troly.config?.apiBaseUrl, ...troly.session.snapshot() }
+          : { configured: false, authenticated: false };
+        return sendJson(res, 200, {
+          ok: true,
+          serverId: serverId || null,
+          version: troly?.config?.appVersion || null,
+          troly: trolyState
+        });
+      }
+
+      if (url.pathname.startsWith('/troly/')) {
+        if (!troly) {
+          const err = new Error('troly_not_configured');
+          err.data = { reason: 'troly_not_wired' };
+          throw err;
+        }
+        const { config, urls, session } = troly;
+        const fetchImpl = troly.fetchImpl || fetch;
+        const requireConfigured = () => {
+          if (!config?.apiBaseUrl) {
+            const err = new Error('troly_not_configured');
+            err.data = { reason: 'missing_api_base_url' };
+            throw err;
+          }
+        };
+        // Cache a backend token response in the in-memory session and return the
+        // token to the shell (which persists it at rest via DPAPI).
+        const applyTokenResponse = (data) => {
+          const token = data?.token || '';
+          const claims = decodeJwt(token) || {};
+          const expiresAt = data?.expires_in
+            ? Date.now() + Number(data.expires_in) * 1000
+            : (Number.isFinite(Number(claims.expires_at ?? claims.exp)) ? Number(claims.expires_at ?? claims.exp) * 1000 : null);
+          const userId = data?.user_id || claims.user_id || null;
+          session.set({ appToken: token, expiresAt, userId });
+          return { token, expiresAt, userId };
+        };
+
+        if (url.pathname === '/troly/login' && req.method === 'POST') {
+          requireConfigured();
+          const body = await parseBody(req);
+          const email = String(body.email || '').trim();
+          const password = String(body.password || '');
+          if (!email || !password) {
+            const err = new Error('troly_invalid_request');
+            err.data = { reason: 'email_password_required' };
+            throw err;
+          }
+          const data = await trolyLogin({ config, urls, email, password, fetchImpl });
+          return sendJson(res, 200, { ok: true, ...applyTokenResponse(data) });
+        }
+
+        if (url.pathname === '/troly/exchange-web-token' && req.method === 'POST') {
+          requireConfigured();
+          const body = await parseBody(req);
+          const webToken = String(body.web_token || body.webToken || '').trim();
+          if (!webToken) {
+            const err = new Error('troly_invalid_request');
+            err.data = { reason: 'web_token_required' };
+            throw err;
+          }
+          const data = await trolyExchangeWebToken({ config, urls, webToken, fetchImpl });
+          return sendJson(res, 200, { ok: true, ...applyTokenResponse(data) });
+        }
+
+        if (url.pathname === '/troly/session' && req.method === 'POST') {
+          const body = await parseBody(req);
+          const token = String(body.token || '').trim();
+          if (!token) {
+            const err = new Error('troly_invalid_request');
+            err.data = { reason: 'token_required' };
+            throw err;
+          }
+          const claims = decodeJwt(token) || {};
+          const expiresAt =
+            Number(body.expiresAt) ||
+            (Number.isFinite(Number(claims.expires_at ?? claims.exp)) ? Number(claims.expires_at ?? claims.exp) * 1000 : null);
+          session.set({ appToken: token, expiresAt, userId: body.userId || claims.user_id || null });
+          return sendJson(res, 200, { ok: true, ...session.snapshot() });
+        }
+
+        if (url.pathname === '/troly/app-token' && req.method === 'GET') {
+          requireConfigured();
+          const current = session.require();
+          const data = await trolyRefreshAppToken({ config, urls, currentToken: current.appToken, fetchImpl });
+          return sendJson(res, 200, { ok: true, ...applyTokenResponse(data) });
+        }
+
+        if (url.pathname === '/troly/keys' && req.method === 'POST') {
+          requireConfigured();
+          const current = session.require();
+          const data = await trolyFetchKeys({ config, urls, appToken: current.appToken, fetchImpl });
+          const keys = decodeKeys(data);
+          session.setKeys(keys);
+          return sendJson(res, 200, {
+            ok: true,
+            hasAnthropic: !!keys.anthropicApiKey,
+            hasDeepgram: !!keys.deepgramApiKey,
+            hasGemini: !!keys.geminiApiKey
+          });
+        }
+        // Unknown /troly/* path falls through to the 404 below.
       }
 
       return sendJson(res, 404, { error: 'not_found' });
