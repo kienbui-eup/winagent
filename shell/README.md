@@ -11,7 +11,7 @@ for the architecture decision (supersedes ADR-0001's Electron-shell assumption).
 |---|---|---|
 | `src/Troly.WinAgent.Core` | `net8.0` | Shell-agnostic runtime supervision: discovery/health handshake, HTTP client, process launcher, Win32 Job Object. No UI dependency, so it builds and unit-tests anywhere on Windows. |
 | `tests/Troly.WinAgent.Core.Tests` | `net8.0` | xUnit tests for the Core (state reader, HTTP handshake, supervisor lifecycle) using a stub `HttpMessageHandler` + fake launcher — no real Node/sockets needed. |
-| `src/Troly.WinAgent.App` | _(Phase B+)_ | WinUI 3 app: floating bar, chat, tray, voice/STT, TTS, Troly login. Not scaffolded yet (needs the Windows App SDK templates / VS). |
+| `src/Troly.WinAgent.App` | `net8.0-windows10.0.19041.0` | WinUI 3 app (unpackaged). Phase B2: single-instance entry (`AppInstance`), Troly login UI, runtime supervision + auth/key-sync wiring. **Intentionally NOT in `Troly.WinAgent.sln`** (see build note). Floating bar / voice / TTS land in Phases D–E. |
 
 ### Core types (Phase A)
 
@@ -36,6 +36,33 @@ dotnet test   shell/Troly.WinAgent.sln
 
 (If the `.sln` is absent, target the test project directly:
 `dotnet test shell/tests/Troly.WinAgent.Core.Tests/Troly.WinAgent.Core.Tests.csproj`.)
+
+### Building the WinUI App (`Troly.WinAgent.App`)
+
+The App is **not** part of `Troly.WinAgent.sln` because the bare .NET 8 SDK cannot
+complete the build: the MRT/PRI resource step needs the MSIX/Appx MSBuild tasks
+(`Microsoft.Build.Packaging.Pri.Tasks.dll`) that ship with **Visual Studio 2022**
+(or the "Windows application packaging" build tooling), not the SDK alone. On a box
+without it the build fails with `MSB4062 … ExpandPriContent`. The C#/XAML itself
+compiles fine (verified headlessly via `XamlCompiler`).
+
+Build/run on a dev box that has VS 2022 (with the Windows App SDK C# templates):
+
+```powershell
+dotnet build shell/src/Troly.WinAgent.App/Troly.WinAgent.App.csproj -r win-x64
+```
+
+For a from-source dev run (before packaging in Phase G bundles `node.exe` + sidecar),
+point the supervisor at your runtime via env vars:
+
+```powershell
+$env:TROLY_RUNTIME_EXE  = "<path to electron.cmd or electron.exe>"
+$env:TROLY_RUNTIME_ARGS = "<path to winagent>\main.mjs"   # runtime-host.mjs after Phase F
+```
+
+App pieces (Phase B2): `Program.cs` (single-instance via `AppInstance`, per research),
+`MainWindow` (email/password login → `TrolyAuthClient` → DPAPI `TokenStore`, with
+runtime health from `/runtime/status`). Floating bar / voice / TTS arrive in Phases D–E.
 
 ## Running against the real runtime (manual, Phase A smoke)
 
