@@ -75,16 +75,17 @@ test('trolyLogin: maps 500 to troly_upstream_error', async () => {
   );
 });
 
-test('trolyRefreshAppToken: sends current_token as a query param via GET', async () => {
+test('trolyRefreshAppToken: sends the current token in the Authorization header via POST', async () => {
   let seen = null;
   const fetchImpl = async (u, opts) => {
-    seen = { url: u, method: opts.method };
+    seen = { url: u, method: opts.method, headers: opts.headers };
     return jres(200, { token: makeJwt({ user_id: 'u1' }), expires_in: 86400 });
   };
   await trolyRefreshAppToken({ config: cfg(), urls: urls(), currentToken: 'TOK123', fetchImpl });
-  assert.equal(seen.method, 'GET');
+  assert.equal(seen.method, 'POST');
   assert.ok(seen.url.includes('/v1/macos-client/app-token'));
-  assert.ok(seen.url.includes('current_token=TOK123'));
+  assert.ok(!seen.url.includes('current_token'));
+  assert.equal(seen.headers.Authorization, 'Bearer TOK123');
 });
 
 test('trolyFetchKeys: sends Authorization Bearer with the app token + client headers', async () => {

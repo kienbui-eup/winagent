@@ -66,12 +66,12 @@ export async function trolyRefreshAppToken({ config, urls, currentToken, fetchIm
     err.data = { reason: 'missing_app_token_url' };
     throw err;
   }
-  const u = new URL(urls.appTokenUrl);
-  u.searchParams.set('current_token', currentToken || '');
   return trolyRequest({
-    url: u.toString(),
-    method: 'GET',
-    headers: trolyRequestHeaders(config || {}, { contentType: null }),
+    url: urls.appTokenUrl,
+    method: 'POST',
+    headers: trolyRequestHeaders(config || {}),
+    body: {},
+    currentToken,
     timeoutMs: config?.timeoutMs,
     fetchImpl
   });

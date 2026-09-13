@@ -151,7 +151,7 @@ test('troly/app-token: refreshes after login', async (t) => {
   const { server, port } = await makeServer();
   t.after(() => server.close());
   await req({ port, token: 'secret', method: 'POST', pth: '/troly/login', body: { email: 'good@troly.me', password: 'pw' } });
-  const { res, data } = await req({ port, token: 'secret', method: 'GET', pth: '/troly/app-token' });
+  const { res, data } = await req({ port, token: 'secret', method: 'POST', pth: '/troly/app-token' });
   assert.equal(res.status, 200);
   assert.equal(data.ok, true);
   assert.ok(data.token);

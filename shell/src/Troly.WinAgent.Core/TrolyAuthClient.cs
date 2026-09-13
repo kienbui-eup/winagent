@@ -59,7 +59,7 @@ public sealed class TrolyAuthClient : IDisposable
         => TokenCallAsync(HttpMethod.Post, "/troly/exchange-web-token", new { web_token = webToken }, ct);
 
     public Task<TrolyTokenResult> RefreshAppTokenAsync(CancellationToken ct = default)
-        => TokenCallAsync(HttpMethod.Get, "/troly/app-token", null, ct);
+        => TokenCallAsync(HttpMethod.Post, "/troly/app-token", new { }, ct);
 
     /// <summary>Cold-start: push a previously stored app token into the runtime's in-memory session.</summary>
     public async Task PushSessionAsync(string token, DateTimeOffset? expiresAt, string? userId, CancellationToken ct = default)

@@ -1237,7 +1237,7 @@ export function startHttpApi({
           return sendJson(res, 200, { ok: true, ...session.snapshot() });
         }
 
-        if (url.pathname === '/troly/app-token' && req.method === 'GET') {
+        if (url.pathname === '/troly/app-token' && req.method === 'POST') {
           requireConfigured();
           const current = session.require();
           const data = await trolyRefreshAppToken({ config, urls, currentToken: current.appToken, fetchImpl });

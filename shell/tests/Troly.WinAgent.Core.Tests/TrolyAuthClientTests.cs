@@ -77,11 +77,11 @@ public class TrolyAuthClientTests
     }
 
     [Fact]
-    public async Task RefreshAppTokenAsync_uses_GET()
+    public async Task RefreshAppTokenAsync_uses_POST()
     {
         using var client = ClientFor(req =>
         {
-            Assert.Equal(HttpMethod.Get, req.Method);
+            Assert.Equal(HttpMethod.Post, req.Method);
             Assert.Equal("/troly/app-token", req.RequestUri!.AbsolutePath);
             return StubHttpMessageHandler.Json(HttpStatusCode.OK, "{\"ok\":true,\"token\":\"jwt-new\",\"userId\":\"u1\"}");
         });
