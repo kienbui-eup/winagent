@@ -96,7 +96,7 @@ function hasApi(name) {
 async function callApi(name, args, { fallback = null, required = false } = {}) {
   const b = getBridge();
   if (typeof b?.[name] !== 'function') {
-    if (required) throw new Error(`${name} is unavailable in this window. Restart Agentify Desktop after updating.`);
+    if (required) throw new Error(`${name} is unavailable in this window. Restart Troly after updating.`);
     return fallback;
   }
   try {
@@ -436,7 +436,7 @@ async function refresh() {
       btnClose.className = 'btn secondary tabActionBtn destructive';
       btnClose.textContent = t.protectedTab ? 'Pinned' : 'Close';
       btnClose.title = t.protectedTab
-        ? 'The default tab stays pinned so Agentify always has a fallback tab.'
+        ? 'The default tab stays pinned so Troly always has a fallback tab.'
         : 'Close tab';
       btnClose.setAttribute('aria-label', t.protectedTab ? 'Pinned tab' : 'Close tab');
       btnClose.disabled = !!t.protectedTab;
@@ -694,7 +694,7 @@ async function main() {
       );
       const backendChanged = String(saved?.browserBackend || 'electron') !== String(lastState.browserBackend || 'electron');
       settingsDirty = false;
-      el('settingsHint').textContent = `Saved.${saved?.acknowledgedAt ? ` ${saved.acknowledgedAt}` : ''}${backendChanged ? ' Restart Agentify Desktop to apply backend changes.' : ''}`;
+      el('settingsHint').textContent = `Saved.${saved?.acknowledgedAt ? ` ${saved.acknowledgedAt}` : ''}${backendChanged ? ' Restart Troly to apply backend changes.' : ''}`;
       setChecked('setAcknowledge', false);
       updateSaveEnabled();
       await refresh();

@@ -3,20 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Agentify Desktop</title>
+    <title>Troly</title>
+    <link rel="stylesheet" href="./brand-theme.css" />
     <link rel="stylesheet" href="./control-center.css" />
+    <script src="./appearance.js"></script>
   </head>
   <body>
     <div class="app">
       <header class="header">
         <div class="brand">
-          <div class="logo">A</div>
           <div class="titles">
-            <div class="name">Agentify Desktop</div>
+            <div class="name"><img class="brand-light" src="./brand/troly-wordmark.svg" alt="Troly" /><img class="brand-dark" src="./brand/troly-wordmark-light.svg" alt="Troly" /></div>
             <div class="sub">Local browser control • MCP</div>
           </div>
         </div>
         <div class="actions">
+          <select id="appearanceMode" aria-label="Appearance"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
           <button id="btnToggleTabs" class="btn secondary headerBtn iconOnlyHeaderBtn" title="Hide all managed tabs" aria-label="Hide all managed tabs" aria-pressed="false">
             <span class="headerBtnInner">
               <svg class="headerIcon iconHideTabs" viewBox="0 0 16 16" aria-hidden="true">
@@ -191,7 +193,7 @@
         <section class="card">
           <div class="cardTitle">Browser</div>
           <div class="hint">
-            Choose whether Agentify runs embedded Electron tabs or drives a real Chrome session over CDP. Browser changes require a restart.
+            Choose whether Troly runs embedded Electron tabs or drives a real Chrome session over CDP. Browser changes require a restart.
           </div>
           <div class="grid">
             <label class="field">
@@ -205,10 +207,10 @@
             <label id="chromeProfileModeField" class="field">
               <div class="label">Chrome profile mode</div>
               <select id="setChromeProfileMode">
-                <option value="isolated">Agentify isolated profile</option>
+                <option value="isolated">Troly isolated profile</option>
                 <option value="existing">Existing Chrome profile</option>
               </select>
-              <div class="fieldHelp">`existing` reuses your normal Chrome session. Close regular Chrome first so Agentify can take over the profile cleanly.</div>
+              <div class="fieldHelp">`existing` reuses your normal Chrome session. Close regular Chrome first so Troly can take over the profile cleanly.</div>
             </label>
             <label id="chromeProfileNameField" class="field">
               <div class="label">Chrome profile name</div>
@@ -227,7 +229,7 @@
           </div>
           <div class="modalBody">
             <p>
-              Agentify Desktop controls browser tabs on your machine. High-frequency tab automation can accidentally send repeated prompts,
+              Troly controls browser tabs on your machine. High-frequency tab automation can accidentally send repeated prompts,
               trigger abuse systems, consume account quota, or violate a website's terms of use.
             </p>
             <p>
@@ -245,7 +247,7 @@
 
       <footer class="footer">
         <div class="footerStatus">
-          <div id="statusLine" class="status"><span class="activityLabel">Activity:</span> Starting Agentify Desktop…</div>
+          <div id="statusLine" class="status"><span class="activityLabel">Activity:</span> Starting Troly…</div>
           <div id="messageLine" class="messageLine">Loading…</div>
         </div>
       </footer>

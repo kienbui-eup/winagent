@@ -1,4 +1,8 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.Win32;
+using System.Globalization;
 using Troly.WinAgent.Core;
 
 namespace Troly.WinAgent.App;
@@ -9,10 +13,60 @@ public sealed partial class MainWindow : Window
     private RuntimeSupervisor? _supervisor;
     private TrolyAuthClient? _auth;
 
+    private bool _appearanceReady;
+
     public MainWindow()
     {
         InitializeComponent();
+        InitializeAppearance();
+        Root.ActualThemeChanged += (_, _) => UpdateBrandLogo();
         _ = InitializeAsync();
+    }
+
+    private void InitializeAppearance()
+    {
+        string mode = "system";
+        try
+        {
+            using var preferences = Registry.CurrentUser.OpenSubKey(@"Software\Troly\Appearance");
+            mode = preferences?.GetValue("Theme") as string ?? "system";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[troly] Appearance preference unavailable: {ex.Message}");
+        }
+        AppearancePicker.SelectedIndex = mode == "light" ? 1 : mode == "dark" ? 2 : 0;
+        ApplyAppearance(mode);
+        _appearanceReady = true;
+    }
+
+    private void AppearancePicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_appearanceReady || AppearancePicker.SelectedItem is not ComboBoxItem item) return;
+        var mode = item.Tag as string ?? "system";
+        ApplyAppearance(mode);
+        try
+        {
+            using var preferences = Registry.CurrentUser.CreateSubKey(@"Software\Troly\Appearance");
+            preferences?.SetValue("Theme", mode, RegistryValueKind.String);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[troly] Appearance preference not saved: {ex.Message}");
+        }
+    }
+
+    private void ApplyAppearance(string mode)
+    {
+        Root.RequestedTheme = mode == "light" ? ElementTheme.Light : mode == "dark" ? ElementTheme.Dark : ElementTheme.Default;
+        UpdateBrandLogo();
+    }
+
+    private void UpdateBrandLogo()
+    {
+        var theme = Root.ActualTheme == ElementTheme.Dark ? "dark" : "light";
+        var locale = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "vi" ? "vi" : "en";
+        BrandLogo.Source = new BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", $"wordmark-{locale}-{theme}.png")));
     }
 
     private async Task InitializeAsync()
